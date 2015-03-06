@@ -1,0 +1,17 @@
+{
+    "user": "username",
+    "pass": "password",
+    "domains": {
+        "some.domain": {
+            "subdomains": {
+              "home": "534234124",
+              "work": "123121232"
+            }
+        },
+        "another.domain": {
+            "subdomains": {
+                "forum": "987531234"
+            }
+        }
+    }
+}
