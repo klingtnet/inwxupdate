@@ -6,13 +6,18 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+if [ ! -f "$1" ]; then
+    echo "\"$1\" is not a file!"
+    return 1
+fi
+
 # refactor this to a json file and use jq to get the values
 declare -A CONF
-CONF[USER]=$(jq -r .user config.json)
-CONF[PASS]=$(jq -r .pass config.json)
+CONF[USER]=$(jq -r .user $1)
+CONF[PASS]=$(jq -r .pass $1)
 # domains
 # if you have more than one domain/subdomain to update, write them as space separated list
-CONF[DOMAINS]="$(jq -r '.domains | keys[]' config.json)"
+CONF[DOMAINS]="$(jq -r '.domains | keys[]' $1)"
 
 API_URL='https://api.domrobot.com/xmlrpc/'
 
@@ -61,8 +66,8 @@ constructPayload() {
 }
 
 for D in ${CONF['DOMAINS']}; do
-    for SUB in $(jq -r ".domains.\"$D\".subdomains | keys[]" config.json); do
-        ID=$(jq -r ".domains.\"$D\".subdomains.\"$SUB\"" config.json)
+    for SUB in $(jq -r ".domains.\"$D\".subdomains | keys[]" $1); do
+        ID=$(jq -r ".domains.\"$D\".subdomains.\"$SUB\"" $1)
         PAYLOAD="$(constructPayload ${CONF[USER]} ${CONF[PASS]} $ID $IP4 | sed -E 's/>\s+</></g')"
         echo -e "Trying to update \"$SUB.$D\" with \"$IP4\" and payload:\n$PAYLOAD\n"
         curl --silent --request POST --header 'Content-Type: application/xml' --data "$PAYLOAD" $API_URL
