@@ -8,21 +8,16 @@ fi
 
 if [ ! -f "$1" ]; then
     echo "\"$1\" is not a file!"
-    return 1
+    exit 1
 fi
 
-# refactor this to a json file and use jq to get the values
-declare -A CONF
-CONF[USER]=$(jq -r .user $1)
-CONF[PASS]=$(jq -r .pass $1)
-# domains
-# if you have more than one domain/subdomain to update, write them as space separated list
-CONF[DOMAINS]="$(jq -r '.domains | keys[]' $1)"
+USER=$(jq -r .user $1)
+PASS=$(jq -r .pass $1)
+declare -a DOMAINS
+DOMAINS="$(jq -r '.domains | keys[]' $1)"
 
 API_URL='https://api.domrobot.com/xmlrpc/'
 
-# ipinfo.io's DNS has no AAAA record at the moment
-#IP4="$(curl --silent --ipv4 ipinfo.io | jq .ip | tr --delete \")"
 IP4="$(curl --silent --ipv4 ipinfo.io/ip)"
 
 constructPayload() {
@@ -65,11 +60,22 @@ constructPayload() {
     echo $PAYLOAD | tr --delete '[\t\n]'
 }
 
-for D in ${CONF['DOMAINS']}; do
-    for SUB in $(jq -r ".domains.\"$D\".subdomains | keys[]" $1); do
-        ID=$(jq -r ".domains.\"$D\".subdomains.\"$SUB\"" $1)
-        PAYLOAD="$(constructPayload ${CONF[USER]} ${CONF[PASS]} $ID $IP4 | sed -E 's/>\s+</></g')"
-        echo -e "Trying to update \"$SUB.$D\" with \"$IP4\" and payload:\n$PAYLOAD\n"
-        curl --silent --request POST --header 'Content-Type: application/xml' --data "$PAYLOAD" $API_URL
+update() {
+    if [ -z ${2+2} ]; then
+        echo "IP address is empty!"
+        return 1
+    fi
+    for D in ${DOMAINS}; do
+        for SUB in $(jq -r ".domains.\"$D\".subdomains | keys[]" $1); do
+            ID=$(jq -r ".domains.\"$D\".subdomains.\"$SUB\"" $1)
+            PAYLOAD="$(constructPayload ${USER} ${PASS} $ID $2 | sed -E 's/>\s+</></g')"
+            #echo -e "Trying to update \"$SUB.$D\" with \"$2\" and payload:\n$PAYLOAD\n"
+            RES=$(curl --silent --request POST --header 'Content-Type: application/xml' --data "$PAYLOAD" $API_URL)
+            if [ -z "$(echo \"$RES\" | grep -i 'successful')" ]; then
+                echo -e "Something went wrong:\n\t$RES"
+            fi
+        done
     done
-done
+}
+
+update $1 $IP4
