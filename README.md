@@ -21,4 +21,7 @@ Simply call the inwxupdate script and pass the [full] path to the config file as
 ```
 
 Usually you want to do this periodically, you could use a cronjob (`crontab -e`) for this purpose.
- 
+
+## TODO
+
+- IPv6 
